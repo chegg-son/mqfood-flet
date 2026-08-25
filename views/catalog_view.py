@@ -22,6 +22,7 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
         focused_color=PRIMARY,
         hint_style=ft.TextStyle(color=ft.Colors.GREY_400),
         height=50,
+        expand=True,
     )
 
     chips_row = ft.Row(spacing=8, scroll=ft.ScrollMode.AUTO)
