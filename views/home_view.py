@@ -167,45 +167,6 @@ def build_home_view(page: ft.Page, storage, on_logout=None):
         ),
     )
 
-    # ── Quick stats / promo cards ─────────────────────────────────────────
-    def quick_card(icon, label, color):
-        return ft.Container(
-            expand=True,
-            height=80,
-            border_radius=16,
-            bgcolor=ft.Colors.WHITE,
-            shadow=ft.BoxShadow(
-                blur_radius=12,
-                spread_radius=0,
-                offset=ft.Offset(0, 4),
-                color=ft.Colors.with_opacity(0.08, ft.Colors.BLACK),
-            ),
-            padding=ft.Padding.all(14),
-            content=ft.Column(
-                [
-                    ft.Container(
-                        width=32,
-                        height=32,
-                        border_radius=10,
-                        bgcolor=SURFACE_COLOR,
-                        alignment=ft.Alignment.CENTER,
-                        content=ft.Icon(icon, size=18, color=color),
-                    ),
-                    ft.Text(label, size=11, color=ft.Colors.GREY_600, weight=ft.FontWeight.W_500),
-                ],
-                spacing=6,
-            ),
-        )
-
-    quick_actions = ft.Row(
-        [
-            quick_card(ft.Icons.STORE_OUTLINED, "Katalog", PRIMARY),
-            quick_card(ft.Icons.SHOPPING_CART_OUTLINED, "Keranjang", ft.Colors.ORANGE_700),
-            quick_card(ft.Icons.RECEIPT_LONG_OUTLINED, "Pesanan", ft.Colors.BLUE_600),
-        ],
-        spacing=10,
-    )
-
     # ── Section titles (consistent accent bar + hierarchy) ────────────────
     def section_title(text):
         return ft.Row(
@@ -273,10 +234,6 @@ def build_home_view(page: ft.Page, storage, on_logout=None):
                         section_title("Status Toko"),
                         ft.Container(height=8),
                         shop_banner,
-                        ft.Container(height=16),
-                        section_title("Menu Cepat"),
-                        ft.Container(height=8),
-                        quick_actions,
                         ft.Container(height=16),
                         section_title("Produk Unggulan"),
                         ft.Container(height=8),
