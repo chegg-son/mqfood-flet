@@ -5,7 +5,7 @@ import models
 from config import BG_COLOR, PRIMARY, SECONDARY, SURFACE_COLOR, TEXT_COLOR
 from ui import PAYMENT_LABELS, STATUS_GROUP, status_badge
 
-FILTERS = [("Semua", None), ("Menunggu", "Menunggu"), ("Selesai", "Selesai"), ("Lainnya", "Lainnya")]
+FILTERS = [("Semua", None), ("Selesai", "Selesai"), ("Lainnya", "Lainnya")]
 
 
 def build_orders_view(page: ft.Page, storage, open_order_detail):

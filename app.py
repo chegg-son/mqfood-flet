@@ -131,7 +131,10 @@ async def main(page: ft.Page):
 
     def _tab_view(route):
         if route in view_cache:
-            return view_cache[route]
+            view = view_cache[route]
+            if view.navigation_bar:
+                view.navigation_bar.selected_index = ROUTE_TO_INDEX[route]
+            return view
 
         nav = _nav_bar(ROUTE_TO_INDEX[route])
         if route == "/":
