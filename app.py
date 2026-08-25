@@ -46,6 +46,16 @@ async def main(page: ft.Page):
     # in place without a page transition; only pushed screens animate.
     current_tab = "/"
 
+    # Cache built tab views to avoid rebuilding on every navigation
+    view_cache = {}
+
+    def clear_view_cache(*routes):
+        if not routes:
+            view_cache.clear()
+        else:
+            for r in routes:
+                view_cache.pop(r, None)
+
     # ── Shared view helpers ────────────────────────────────────────────────
     def _wrap(content, route, nav=None):
         return ft.View(
@@ -85,12 +95,14 @@ async def main(page: ft.Page):
         session["order"] = body.get("order", {})
         session["payment"] = body.get("payment")
         session["payment_back_route"] = "/orders"
+        clear_view_cache("/orders")
         page.navigate("/payment")
 
     def go_payment_from_order(data):
         session["order"] = data
         session["payment"] = None
         session["payment_back_route"] = "/order"
+        clear_view_cache("/orders")
         page.navigate("/payment")
 
     def go_invoice(data):
@@ -105,6 +117,7 @@ async def main(page: ft.Page):
         storage.remove("token")
         storage.remove("user")
         session.clear()
+        clear_view_cache()
         page.navigate("/login")
 
     # ── Per-route view builders ────────────────────────────────────────────
@@ -117,6 +130,9 @@ async def main(page: ft.Page):
         return _wrap(content, "/login")
 
     def _tab_view(route):
+        if route in view_cache:
+            return view_cache[route]
+
         nav = _nav_bar(ROUTE_TO_INDEX[route])
         if route == "/":
             content = build_home_view(page, storage, on_logout=do_logout)
@@ -131,9 +147,10 @@ async def main(page: ft.Page):
             )
         else:  # /orders
             content = build_orders_view(page, storage, open_order_detail)
-        # Constant root route: tab switches rebuild this view in place (no
-        # page transition) instead of popping/pushing a new route.
-        return _wrap(content, "/", nav=nav)
+
+        view = _wrap(content, "/", nav=nav)
+        view_cache[route] = view
+        return view
 
     def _product_view():
         content = build_product_detail_view(
@@ -165,6 +182,9 @@ async def main(page: ft.Page):
         return _wrap(content, "/payment")
 
     def _order_detail_view():
+        def on_order_cancelled():
+            clear_view_cache("/orders")
+
         content = build_order_detail_view(
             page,
             storage,
@@ -172,6 +192,7 @@ async def main(page: ft.Page):
             on_back=lambda: page.navigate("/orders"),
             on_pay=go_payment_from_order,
             on_invoice=go_invoice,
+            on_cancel=on_order_cancelled,
         )
         return _wrap(content, "/order")
 

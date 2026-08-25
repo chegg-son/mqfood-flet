@@ -265,7 +265,7 @@ def build_orders_view(page: ft.Page, storage, open_order_detail):
     )
 
 
-def build_order_detail_view(page: ft.Page, storage, order, on_back=None, on_pay=None, on_invoice=None):
+def build_order_detail_view(page: ft.Page, storage, order, on_back=None, on_pay=None, on_invoice=None, on_cancel=None):
     body = ft.Column(
         expand=True,
         spacing=0,
@@ -590,6 +590,8 @@ def build_order_detail_view(page: ft.Page, storage, order, on_back=None, on_pay=
         try:
             api.cancel_order(order["id"])
             page.show_dialog(ft.SnackBar(ft.Text("Pesanan dibatalkan."), bgcolor=PRIMARY))
+            if on_cancel:
+                on_cancel()
         except api.ApiError as exc:
             page.show_dialog(ft.SnackBar(ft.Text(str(exc)), bgcolor=ft.Colors.RED))
         page.update()
