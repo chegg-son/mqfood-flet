@@ -156,11 +156,15 @@ async def main(page: ft.Page):
         return view
 
     def _product_view():
+        def on_add_to_cart():
+            clear_view_cache("/cart")
+
         content = build_product_detail_view(
             page,
             storage,
             session.get("product"),
             on_back=lambda: page.navigate("/catalog"),
+            on_add_to_cart=on_add_to_cart,
         )
         return _wrap(content, "/product")
 

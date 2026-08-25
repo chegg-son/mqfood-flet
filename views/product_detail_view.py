@@ -4,7 +4,7 @@ import models
 from config import BG_COLOR, PRIMARY, SECONDARY, SURFACE_COLOR, TEXT_COLOR
 
 
-def build_product_detail_view(page: ft.Page, storage, product: models.Product, on_back):
+def build_product_detail_view(page: ft.Page, storage, product: models.Product, on_back, on_add_to_cart=None):
     qty_state = {"value": 1}
     in_stock = product.stok > 0
 
@@ -68,6 +68,8 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
 
     def add_to_cart(e):
         storage.add_cart_item(product, qty_state["value"])
+        if on_add_to_cart:
+            on_add_to_cart()
         page.show_dialog(
             ft.SnackBar(
                 ft.Row(
