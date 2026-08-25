@@ -29,12 +29,6 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
     state = {"page": 1, "has_more": True, "loading_more": False, "load_error": False}
     req_seq = {"n": 0}
 
-    footer_progress = ft.ProgressBar(
-        height=3,
-        color=PRIMARY,
-        bgcolor=ft.Colors.with_opacity(0.12, PRIMARY),
-        visible=False,
-    )
     footer_spinner = ft.Row(
         [
             ft.ProgressRing(width=18, height=18, stroke_width=2, color=PRIMARY),
@@ -57,7 +51,7 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
     footer_row = ft.Container(
         padding=ft.Padding.only(top=4, bottom=12),
         content=ft.Column(
-            [footer_progress, footer_spinner, footer_retry],
+            [footer_spinner, footer_retry],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=0,
         ),
@@ -69,7 +63,6 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
         state["loading_more"] = True
         state["load_error"] = False
         footer_retry.visible = False
-        footer_progress.visible = True
         footer_spinner.visible = True
         page.update()
         seq = req_seq["n"]
@@ -83,7 +76,6 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
         except api.ApiError:
             state["loading_more"] = False
             state["load_error"] = True
-            footer_progress.visible = False
             footer_spinner.visible = False
             footer_retry.visible = True
             page.update()
@@ -97,7 +89,6 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
         state["page"] = int(meta.get("current_page", state["page"] + 1))
         state["has_more"] = int(meta.get("current_page", 1)) < int(meta.get("last_page", 1))
         state["loading_more"] = False
-        footer_progress.visible = False
         footer_spinner.visible = False
         page.update()
 
@@ -360,7 +351,6 @@ def build_catalog_view(page: ft.Page, storage, open_detail):
             meta = data.get("meta") or {}
             state["has_more"] = int(meta.get("current_page", 1)) < int(meta.get("last_page", 1))
             grid.controls = [card(models.Product.from_api(item)) for item in items]
-            footer_progress.visible = False
             footer_spinner.visible = False
             footer_retry.visible = False
             content_area.content = ft.Column(
