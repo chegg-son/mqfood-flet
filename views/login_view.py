@@ -18,6 +18,7 @@ def build_login_view(page: ft.Page, storage, on_success):
         focused_border_color=PRIMARY,
         focused_color=PRIMARY,
         label_style=ft.TextStyle(color=ft.Colors.GREY_600),
+        on_submit=lambda e: submit(),
     )
     password_field = ft.TextField(
         label="Password",
@@ -31,7 +32,7 @@ def build_login_view(page: ft.Page, storage, on_success):
         focused_border_color=PRIMARY,
         focused_color=PRIMARY,
         label_style=ft.TextStyle(color=ft.Colors.GREY_600),
-        on_submit=lambda e: submit(e),
+        on_submit=lambda e: submit(),
     )
     error_text = ft.Text(
         "",
@@ -48,33 +49,63 @@ def build_login_view(page: ft.Page, storage, on_success):
         visible=False,
     )
 
+    is_loading = False
+
     def set_loading(loading_state: bool):
+        nonlocal is_loading
+        is_loading = loading_state
         submit_btn.disabled = loading_state
+        submit_btn_inner.bgcolor = ft.Colors.GREY_400 if loading_state else PRIMARY
         loading.visible = loading_state
         username_field.disabled = loading_state
         password_field.disabled = loading_state
         page.update()
 
-    async def submit(e):
-        set_loading(True)
-        error_text.visible = False
-        try:
-            body = await asyncio.to_thread(
-                api.login, username_field.value.strip(), password_field.value
-            )
-        except api.ApiError as exc:
-            error_text.value = str(exc)
-            error_text.visible = True
-            set_loading(False)
+    def submit(e=None):
+        nonlocal is_loading
+        if is_loading:
             return
 
-        storage.set("token", body["token"])
-        storage.set("user", body["user"])
-        set_loading(False)
-        on_success(body["user"])
+        username = (username_field.value or "").strip()
+        password = password_field.value or ""
 
-    submit_btn = ft.Container(
-        on_click=submit,
+        if not username:
+            error_text.value = "Username harus diisi."
+            error_text.visible = True
+            page.update()
+            return
+
+        if not password:
+            error_text.value = "Password harus diisi."
+            error_text.visible = True
+            page.update()
+            return
+
+        set_loading(True)
+        error_text.visible = False
+
+        async def _do():
+            try:
+                body = await asyncio.to_thread(api.login, username, password)
+            except api.ApiError as exc:
+                error_text.value = str(exc)
+                error_text.visible = True
+                set_loading(False)
+                return
+            except Exception as exc:
+                error_text.value = f"Koneksi gagal: {exc}"
+                error_text.visible = True
+                set_loading(False)
+                return
+
+            storage.set("token", body["token"])
+            storage.set("user", body["user"])
+            set_loading(False)
+            on_success(body["user"])
+
+        page.run_task(_do)
+
+    submit_btn_inner = ft.Container(
         border_radius=14,
         bgcolor=PRIMARY,
         shadow=ft.BoxShadow(
@@ -100,6 +131,11 @@ def build_login_view(page: ft.Page, storage, on_success):
         animate=ft.Animation(150, ft.AnimationCurve.EASE_IN_OUT),
     )
 
+    submit_btn = ft.GestureDetector(
+        on_tap=lambda e: submit(),
+        content=submit_btn_inner,
+    )
+
     # Hero section
     hero = ft.Container(
         height=260,
@@ -116,7 +152,7 @@ def build_login_view(page: ft.Page, storage, on_success):
                     width=80,
                     height=80,
                     border_radius=40,
-                    bgcolor=ft.Colors.WHITE24,
+                    bgcolor=ft.Colors.WHITE_24,
                     alignment=ft.Alignment.CENTER,
                     content=ft.Icon(ft.Icons.RESTAURANT_MENU, size=44, color=ft.Colors.WHITE),
                 ),
@@ -130,7 +166,7 @@ def build_login_view(page: ft.Page, storage, on_success):
                 ft.Text(
                     "Pemesanan makanan santri",
                     size=14,
-                    color=ft.Colors.WHITE70,
+                    color=ft.Colors.WHITE_70,
                 ),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

@@ -1,6 +1,7 @@
 import flet as ft
 
 import models
+import ui
 from config import BG_COLOR, PRIMARY, SECONDARY, SURFACE_COLOR, TEXT_COLOR
 
 
@@ -222,8 +223,10 @@ def build_cart_view(page: ft.Page, storage, go_checkout, go_browse):
                         height=68,
                         border_radius=14,
                         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                        content=ft.Image(
-                            src=item["gambar_url"],
+                        content=ui.product_image(
+                            page,
+                            item["gambar_url"],
+                            max_width=160,
                             fit=ft.BoxFit.COVER,
                             error_content=ft.Container(
                                 bgcolor=SURFACE_COLOR,

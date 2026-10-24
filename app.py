@@ -10,7 +10,7 @@ from views.home_view import build_home_view
 from views.login_view import build_login_view
 from views.orders_view import build_invoice_view, build_order_detail_view, build_orders_view
 from views.payment_view import build_payment_view
-from views.product_detail_view import build_product_detail_view
+from views.product_detail_view import show_product_detail
 
 # Tab destinations shown in the bottom NavigationBar (index -> route)
 TAB_ROUTES = {0: "/", 1: "/catalog", 2: "/cart", 3: "/orders"}
@@ -37,24 +37,29 @@ async def main(page: ft.Page):
     storage = Storage(page)
     await storage.init()
 
-    # Payloads passed between pushed screens (product, order, payment data)
+    # Payloads passed between pushed screens (order, payment data)
     session = {}
 
     # Root tab currently shown in the bottom NavigationBar. Pushed screens
-    # (product/checkout/payment/invoice) keep this tab underneath them.
+    # (checkout/payment/invoice) keep this tab underneath them.
     # The root view keeps a constant route ("/") so switching tabs updates it
     # in place without a page transition; only pushed screens animate.
     current_tab = "/"
 
-    # Cache built tab views to avoid rebuilding on every navigation
-    view_cache = {}
+    # The four tab roots stay mounted inside one Stack; switching a tab flips
+    # visibility only. Replacing page.views instead forced the client to
+    # receive the whole tab tree again on every switch — and the catalog tree
+    # carries every product photo, which made returning to it the slowest
+    # screen in the app.
+    tab_boxes = {}
+    root_stack = ft.Stack([], expand=True)
 
     def clear_view_cache(*routes):
-        if not routes:
-            view_cache.clear()
-        else:
-            for r in routes:
-                view_cache.pop(r, None)
+        """Drop mounted tab content so it is rebuilt on its next visit."""
+        for route in (routes or tuple(tab_boxes)):
+            box = tab_boxes.pop(route, None)
+            if box is not None and box in root_stack.controls:
+                root_stack.controls.remove(box)
 
     # ── Shared view helpers ────────────────────────────────────────────────
     def _wrap(content, route, nav=None):
@@ -79,10 +84,24 @@ async def main(page: ft.Page):
             ],
         )
 
+    nav_bar = _nav_bar(0)
+    root_view = ft.View(
+        route="/",
+        controls=[root_stack],
+        navigation_bar=nav_bar,
+        padding=0,
+        spacing=0,
+        bgcolor=BG_COLOR,
+    )
+
     # ── Navigation callbacks ───────────────────────────────────────────────
     def open_detail(product):
-        session["product"] = product
-        page.navigate("/product")
+        # Detail opens as a sheet over the current tab, so whatever is
+        # underneath (catalog grid, its cache and scroll position) stays put.
+        def on_add_to_cart():
+            clear_view_cache("/cart")
+
+        show_product_detail(page, storage, product, on_add_to_cart=on_add_to_cart)
 
     def open_order_detail(order):
         session["order"] = order
@@ -122,51 +141,59 @@ async def main(page: ft.Page):
 
     # ── Per-route view builders ────────────────────────────────────────────
     def _login_view():
-        content = build_login_view(
-            page,
-            storage,
-            on_success=lambda user: page.navigate("/"),
-        )
+        def on_login_success(user):
+            # Login is shown by setting page.route directly at startup, so the
+            # client URL is still "/". Pushing "/" therefore does not change the
+            # route and on_route_change never fires - rebuild the views here so
+            # a successful login actually leaves the login screen.
+            clear_view_cache()
+            page.route = "/"
+            page.navigate("/")
+            route_change()
+
+        content = build_login_view(page, storage, on_success=on_login_success)
         return _wrap(content, "/login")
 
-    def _tab_view(route):
-        if route in view_cache:
-            view = view_cache[route]
-            if view.navigation_bar:
-                view.navigation_bar.selected_index = ROUTE_TO_INDEX[route]
-            return view
-
-        nav = _nav_bar(ROUTE_TO_INDEX[route])
+    def _build_tab(route):
         if route == "/":
-            content = build_home_view(page, storage, on_logout=do_logout)
-        elif route == "/catalog":
-            content = build_catalog_view(page, storage, open_detail)
-        elif route == "/cart":
-            content = build_cart_view(
+            return build_home_view(
+                page,
+                storage,
+                on_logout=do_logout,
+                on_catalog=lambda: page.navigate("/catalog"),
+                on_cart=lambda: page.navigate("/cart"),
+                on_orders=lambda: page.navigate("/orders"),
+                on_open_product=open_detail,
+                on_open_order=open_order_detail,
+            )
+        if route == "/catalog":
+            return build_catalog_view(page, storage, open_detail)
+        if route == "/cart":
+            return build_cart_view(
                 page,
                 storage,
                 go_checkout,
                 go_browse=lambda: page.navigate("/catalog"),
             )
-        else:  # /orders
-            content = build_orders_view(page, storage, open_order_detail)
+        return build_orders_view(page, storage, open_order_detail)  # /orders
 
-        view = _wrap(content, "/", nav=nav)
-        view_cache[route] = view
-        return view
+    def _mount_tab(route):
+        box = tab_boxes.get(route)
+        if box is None:
+            box = ft.Container(content=_build_tab(route), expand=True, visible=False)
+            tab_boxes[route] = box
+            root_stack.controls.append(box)
+        return box
 
-    def _product_view():
-        def on_add_to_cart():
-            clear_view_cache("/cart")
-
-        content = build_product_detail_view(
-            page,
-            storage,
-            session.get("product"),
-            on_back=lambda: page.navigate("/catalog"),
-            on_add_to_cart=on_add_to_cart,
-        )
-        return _wrap(content, "/product")
+    def show_tab(route):
+        is_new = route not in tab_boxes
+        box = _mount_tab(route)
+        for r, b in tab_boxes.items():
+            b.visible = r == route
+        nav_bar.selected_index = ROUTE_TO_INDEX[route]
+        if not is_new and hasattr(box.content, "refresh"):
+            # Re-trigger data load for views that support it
+            box.content.refresh()
 
     def _checkout_view():
         content = build_checkout_view(
@@ -221,12 +248,11 @@ async def main(page: ft.Page):
         else:
             if route in ROUTE_TO_INDEX:
                 current_tab = route
-            views = [_tab_view(current_tab)]
+                show_tab(route)
+            views = [root_view]
             # Screens pushed on top of the current tab (skipped when their
             # payload is missing, e.g. after a stale reload/deep link)
-            if route == "/product" and session.get("product") is not None:
-                views.append(_product_view())
-            elif route == "/checkout":
+            if route == "/checkout":
                 views.append(_checkout_view())
             elif route == "/payment" and session.get("order"):
                 views.append(_payment_view())

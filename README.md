@@ -15,7 +15,7 @@ Mobile food-ordering app for santri, built with [Flet](https://flet.dev) (Python
 
 ## Tech Stack
 
-- **Frontend:** Flet 0.86 (Python)
+- **Frontend:** Flet 1.0.1 (Python)
 - **Backend:** Laravel 11 (existing MQFood web app)
 - **Auth:** Laravel Sanctum
 - **Payment:** Midtrans Core API + Muamalat VA
@@ -46,7 +46,7 @@ mqfood-flet/
 
 1. Install dependencies:
    ```bash
-   pip install flet requests qrcode pillow
+   pip install -r requirements.txt
    ```
 
 2. Configure API endpoint in `config.json`:

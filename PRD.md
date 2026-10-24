@@ -217,7 +217,7 @@ mqfood-flet/
   `views/catalog_view.py` (category chips, search, grid, loading/error/empty),
   `views/product_detail_view.py` (image, detail, qty stepper, add-to-cart with
   stock clamp). Add-to-cart persists to client storage (cart view comes in M4).
-- **Built for flet 0.86** (2026 API): `Padding.all/symmetric/only`,
+- **Built for flet 1.0.1** (2026 API): `Padding.all/symmetric/only`,
   `BorderRadius.all`, `BoxFit`, `Chip` (no FilterChip), dropped
   `TextInputAction`.
 - **M4 files:** `views/cart_view.py` (persisted cart, qty steppers clamped to

@@ -1,10 +1,17 @@
 import flet as ft
 
 import models
-from config import BG_COLOR, PRIMARY, SECONDARY, SURFACE_COLOR, TEXT_COLOR
+import ui
+from config import BG_COLOR, PRIMARY, SURFACE_COLOR, TEXT_COLOR
 
 
-def build_product_detail_view(page: ft.Page, storage, product: models.Product, on_back, on_add_to_cart=None):
+def show_product_detail(page: ft.Page, storage, product: models.Product, on_add_to_cart=None):
+    """Show the product detail as a modal bottom sheet.
+
+    A sheet (instead of a pushed page) keeps the catalog mounted underneath, so
+    closing it returns to the exact same grid, scroll position and loaded pages
+    with no re-fetch or rebuild.
+    """
     qty_state = {"value": 1}
     in_stock = product.stok > 0
 
@@ -88,11 +95,56 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
         )
         page.update()
 
-
+    def open_image_viewer(e=None):
+        viewer_width = max(280, (page.width or 500) * 0.82)
+        viewer_height = max(280, (page.height or 700) * 0.62)
+        viewer = ft.InteractiveViewer(
+            content=ft.Container(
+                width=viewer_width,
+                height=viewer_height,
+                alignment=ft.Alignment.CENTER,
+                content=ui.product_image(
+                    page,
+                    product.gambar_url,
+                    max_width=900,
+                    fallback_width=720,
+                    fit=ft.BoxFit.CONTAIN,
+                    width=viewer_width,
+                    height=viewer_height,
+                ),
+            ),
+            pan_enabled=True,
+            scale_enabled=True,
+            min_scale=0.8,
+            max_scale=4.0,
+            constrained=False,
+            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+        )
+        dialog = ft.AlertDialog(
+            modal=True,
+            bgcolor=ft.Colors.BLACK,
+            barrier_color=ft.Colors.with_opacity(0.88, ft.Colors.BLACK),
+            content=ft.Container(
+                width=viewer_width,
+                height=viewer_height,
+                bgcolor=ft.Colors.BLACK,
+                content=viewer,
+            ),
+            actions=[
+                ft.IconButton(
+                    ft.Icons.CLOSE,
+                    icon_color=ft.Colors.WHITE,
+                    tooltip="Tutup",
+                    on_click=lambda e: page.pop_dialog(),
+                )
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        page.show_dialog(dialog)
 
     # ── Product image ──────────────────────────────────────────────────────
     product_image = ft.Container(
-        height=260,
+        height=240,
         border_radius=24,
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         shadow=ft.BoxShadow(
@@ -101,13 +153,17 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
             offset=ft.Offset(0, 8),
             color=ft.Colors.with_opacity(0.14, ft.Colors.BLACK),
         ),
+        on_click=open_image_viewer,
         content=ft.Stack(
             [
-                ft.Image(
-                    src=product.gambar_url,
+                ui.product_image(
+                    page,
+                    product.gambar_url,
+                    max_width=720,
+                    fallback_width=360,
                     fit=ft.BoxFit.COVER,
                     width=float("inf"),
-                    height=260,
+                    height=240,
                     error_content=ft.Container(
                         bgcolor=SURFACE_COLOR,
                         alignment=ft.Alignment.CENTER,
@@ -254,7 +310,7 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
     )
 
     bottom_bar = ft.Container(
-        padding=ft.Padding.symmetric(horizontal=16, vertical=16),
+        padding=ft.Padding.symmetric(horizontal=16, vertical=14),
         bgcolor=ft.Colors.WHITE,
         shadow=ft.BoxShadow(
             blur_radius=20,
@@ -281,27 +337,22 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
     )
 
     header = ft.Container(
-        padding=ft.Padding.only(left=8, right=16, top=12, bottom=12),
+        padding=ft.Padding.only(left=16, right=8, top=8, bottom=8),
         bgcolor=ft.Colors.WHITE,
-        shadow=ft.BoxShadow(
-            blur_radius=8,
-            spread_radius=0,
-            offset=ft.Offset(0, 2),
-            color=ft.Colors.with_opacity(0.06, ft.Colors.BLACK),
-        ),
         content=ft.Row(
             [
-                ft.IconButton(
-                    ft.Icons.ARROW_BACK_IOS_NEW_ROUNDED,
-                    icon_color=ft.Colors.GREY_800,
-                    icon_size=16,
-                    on_click=lambda e: on_back(),
-                ),
                 ft.Text(
                     "Detail Produk",
                     size=18,
                     weight=ft.FontWeight.BOLD,
                     color=ft.Colors.GREY_900,
+                    expand=True,
+                ),
+                ft.IconButton(
+                    ft.Icons.CLOSE,
+                    icon_color=ft.Colors.GREY_800,
+                    tooltip="Tutup",
+                    on_click=lambda e: page.pop_dialog(),
                 ),
             ],
             spacing=8,
@@ -309,30 +360,41 @@ def build_product_detail_view(page: ft.Page, storage, product: models.Product, o
         ),
     )
 
+    body = ft.Container(
+        expand=True,
+        bgcolor=BG_COLOR,
+        padding=ft.Padding.only(left=16, right=16, top=16),
+        content=ft.Column(
+            [
+                product_image,
+                ft.Container(height=16),
+                meta,
+                ft.Container(height=16),
+                desc_section,
+                ft.Container(height=16),
+            ],
+            spacing=0,
+            scroll=ft.ScrollMode.AUTO,
+        ),
+    )
+
+    sheet_height = int(min(680, max(420, (page.height or 760) * 0.88)))
+
     refresh_qty()
 
-    return ft.Column(
-        [
-            header,
-            ft.Container(
+    sheet = ft.BottomSheet(
+        show_drag_handle=True,
+        scrollable=True,
+        use_safe_area=True,
+        bgcolor=BG_COLOR,
+        content=ft.Container(
+            height=sheet_height,
+            bgcolor=BG_COLOR,
+            content=ft.Column(
+                [header, body, bottom_bar],
                 expand=True,
-                bgcolor=BG_COLOR,
-                padding=ft.Padding.only(left=16, right=16, top=16),
-                content=ft.Column(
-                    [
-                        product_image,
-                        ft.Container(height=16),
-                        meta,
-                        ft.Container(height=16),
-                        desc_section,
-                        ft.Container(height=16),
-                    ],
-                    spacing=0,
-                    scroll=ft.ScrollMode.AUTO,
-                ),
+                spacing=0,
             ),
-            bottom_bar,
-        ],
-        expand=True,
-        spacing=0,
+        ),
     )
+    page.show_dialog(sheet)

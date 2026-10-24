@@ -373,10 +373,20 @@ def _build_instructions(method, payment, page, order_id):
             ),
         )
 
-        def on_file(e):
-            if not e.files:
+        # Flet 1.0 services register themselves when constructed; they do not
+        # need to be added to page.overlay. The closure keeps this service
+        # alive while the payment view is displayed.
+        file_picker = ft.FilePicker()
+
+        async def on_pick(e):
+            files = await file_picker.pick_files(
+                allow_multiple=False,
+                dialog_title="Pilih bukti transfer",
+                file_type=ft.FilePickerFileType.IMAGE,
+            )
+            if not files:
                 return
-            path = getattr(e.files[0], "path", None)
+            path = getattr(files[0], "path", None)
             if not path:
                 upload_state.value = "File tidak dapat diakses."
                 upload_state.color = ft.Colors.RED
@@ -389,7 +399,7 @@ def _build_instructions(method, payment, page, order_id):
             upload_state.visible = True
             page.update()
             try:
-                api.upload_payment_proof(order_id, path)
+                await asyncio.to_thread(api.upload_payment_proof, order_id, path)
                 upload_state.value = "Bukti berhasil dikirim. Menunggu konfirmasi admin."
                 upload_state.color = ft.Colors.GREEN_600
             except api.ApiError as exc:
@@ -398,13 +408,6 @@ def _build_instructions(method, payment, page, order_id):
             finally:
                 upload_btn_inner.bgcolor = PRIMARY
                 page.update()
-
-        file_picker = getattr(page, "_mq_file_picker", None)
-        if file_picker is None:
-            file_picker = ft.FilePicker()
-            page._mq_file_picker = file_picker
-            page.overlay.append(file_picker)
-        file_picker.on_result = on_file
 
         rows = [
             _value_box("VIRTUAL ACCOUNT MUAMALAT", payment.get("vano") or "-"),
@@ -421,11 +424,7 @@ def _build_instructions(method, payment, page, order_id):
         rows.extend([
             ft.Container(height=8),
             ft.GestureDetector(
-                on_tap=lambda e: file_picker.pick_files(
-                    allow_multiple=False,
-                    dialog_title="Pilih bukti transfer",
-                    file_type=ft.FilePickerFileType.IMAGE,
-                ),
+                on_tap=on_pick,
                 content=upload_btn_inner,
             ),
             upload_state

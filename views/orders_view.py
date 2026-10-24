@@ -659,7 +659,7 @@ def build_invoice_view(page: ft.Page, storage, order, on_back=None):
                             ft.Column(
                                 [
                                     ft.Text("MQFood", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                                    ft.Text("Pemesanan makanan santri", size=11, color=ft.Colors.WHITE70),
+                                    ft.Text("Pemesanan makanan santri", size=11, color=ft.Colors.WHITE_70),
                                 ],
                                 spacing=2,
                             ),
@@ -667,7 +667,7 @@ def build_invoice_view(page: ft.Page, storage, order, on_back=None):
                             ft.Container(
                                 padding=ft.Padding.symmetric(horizontal=10, vertical=4),
                                 border_radius=20,
-                                bgcolor=ft.Colors.WHITE24,
+                                bgcolor=ft.Colors.WHITE_24,
                                 content=ft.Text("INVOICE", size=12, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                             ),
                         ],
